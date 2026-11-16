@@ -6,7 +6,8 @@ import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const DATA_DIR = path.join(__dirname, 'data');
+// Vercel functions have a read-only filesystem except /tmp.
+const DATA_DIR = process.env.VERCEL ? path.join('/tmp', 'afaq-data') : path.join(__dirname, 'data');
 const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
 const STORE_PATH = path.join(DATA_DIR, 'institute-store.json');
 
@@ -1413,9 +1414,8 @@ async function resolveSessionUser(
   return db.users.find((u) => u.id === userId) ?? null;
 }
 
-async function startServer() {
+export function createApp() {
   const app = express();
-  const PORT = 3000;
 
   app.use(express.json({ limit: '12mb' }));
   app.use('/uploads', express.static(UPLOADS_DIR));
@@ -2058,6 +2058,13 @@ async function startServer() {
     res.json({ students: db.users.map(sanitizeUser) });
   });
 
+  return app;
+}
+
+async function startServer() {
+  const app = createApp();
+  const PORT = 3000;
+
   if (process.env.NODE_ENV !== 'production') {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
@@ -2078,4 +2085,6 @@ async function startServer() {
   });
 }
 
-startServer();
+if (!process.env.VERCEL) {
+  startServer();
+}
